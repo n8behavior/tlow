@@ -1,8 +1,8 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
-#include "actor.hpp"
+#include "game.cpp"
 
-TEST_CASE("Default Actor is an '@'", "[actor]") {
-    Actor a{};
-    REQUIRE(a.ch == '@');
+TEST_CASE("Title is correct", "[game]") {
+    Game g{};
+    REQUIRE(g.sAppName == "The Lie of Winterhaven");
 }

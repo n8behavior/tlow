@@ -8,6 +8,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+    - name: Install build deps
+      run: sudo apt update && sudo apt dist-upgrade -y && sudo apt install g++-9 libpng-dev libx11-dev libgl-dev
     - uses: actions/checkout@v2
     - name: Run CMakeLists.txt
       run: cmake .
