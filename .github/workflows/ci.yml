@@ -7,9 +7,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: ubuntu:latest
+    env:
+      DEBIAN_FRONTEND: noninteractive
     steps:
+    - name: Make in fresh
+      run: apt update && apt dist-upgrade -y -q
+    - name: Install build tools
+      run:  apt install -y -q git ca-certificates cmake build-essential
     - name: Install build deps
-      run: sudo apt update && sudo apt dist-upgrade -y && sudo apt install g++-9 libpng-dev libx11-dev libgl-dev
+      run:  apt install -y -q libpng-dev libx11-dev libgl1-mesa-dev
     - uses: actions/checkout@v2
     - name: Run CMakeLists.txt
       run: cmake .
