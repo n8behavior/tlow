@@ -1,5 +1,6 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.hpp"
+//#include <execution>
 
 // Override base class with your custom functionality
 class Game : public olc::PixelGameEngine {
@@ -105,7 +106,7 @@ public:
 public:
 	bool OnUserCreate() override
 	{
-		rendSelect.Load("./dng_select.png");
+		rendSelect.Load("./cursor.png");
 		rendAllWalls.Load("./sprites.png");
 
 		world.Create(64, 64);
@@ -321,7 +322,7 @@ public:
 				GetFaceQuads({ x, y }, fCameraAngle, fCameraPitch, fCameraZoom, { vCameraPos.x, 0.0f, vCameraPos.y }, vQuads);
 
 		// 3) Sort in order of depth, from farthest away to closest
-		std::sort(vQuads.begin(), vQuads.end(), [](const sQuad& q1, const sQuad& q2)
+		std::sort(/*std::execution::par_unseq, */vQuads.begin(), vQuads.end(), [](const sQuad& q1, const sQuad& q2)
 			{
 				float z1 = (q1.points[0].z + q1.points[1].z + q1.points[2].z + q1.points[3].z) * 0.25f;
 				float z2 = (q2.points[0].z + q2.points[1].z + q2.points[2].z + q2.points[3].z) * 0.25f;
