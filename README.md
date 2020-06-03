@@ -16,7 +16,7 @@
 ## Getting started
 You can compile the game from source (see below) or pull the current build from GitHub.
 ### Just get the game
-If you just want to play/test the game download the artifact bundle from GitHub
+If you just want to play/test the game, download the artifact bundle from GitHub
 
 Go here https://github.com/n8behavior/tlow/actions and click any successful build (recommend latest) and download the zip file in the artifacts section
 
