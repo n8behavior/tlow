@@ -24,5 +24,14 @@ jobs:
       run: make
     - name: Run Catch2 tests
       run: ./test/tests
+    - uses: actions/upload-artifact@v2
+      with:
+        path: src/tlow
+    - uses: actions/upload-artifact@v2
+      with:
+        path: src/*.png
+    - uses: actions/upload-artifact@v2
+      with:
+        path: test/tests
 
       
