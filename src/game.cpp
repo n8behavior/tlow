@@ -108,6 +108,7 @@ public:
     float fCameraZoom = 16.0f;
 
     bool bVisible[6];
+    sQuad inside;
 
     olc::vi2d vCursor = { 16, 16 };
     olc::vi2d vTileCursor = { 0,0 };
@@ -152,6 +153,7 @@ public:
         return true;
     }
 
+    // Given the camera and upper left corner of the cell floor, project the other 7 vertices
     std::array<vec3d, 8> CreateCube(const olc::vi2d& vCell, const float fAngle, const float fPitch, const float fScale, const vec3d& vCamera)
     {
         // Unit Cube
@@ -193,23 +195,23 @@ public:
             worldCube[i].z = rotCube[i].y * s + rotCube[i].z * c;
         }
 
-        // Project Cube Orthographically - Unit Cube Viewport
-        //float fLeft = -ScreenWidth() * 0.5f;
-        //float fRight = ScreenWidth() * 0.5f;
-        //float fTop = ScreenHeight() * 0.5f;
-        //float fBottom = -ScreenHeight() * 0.5f;
-        //float fNear = 0.1f;
-        //float fFar = 100.0f;*/
-        //for (int i = 0; i < 8; i++)
-        //{
-        //	projCube[i].x = (2.0f / (fRight - fLeft)) * worldCube[i].x - ((fRight + fLeft) / (fRight - fLeft));
-        //	projCube[i].y = (2.0f / (fTop - fBottom)) * worldCube[i].y - ((fTop + fBottom) / (fTop - fBottom));
-        //	projCube[i].z = (2.0f / (fFar - fNear)) * worldCube[i].z - ((fFar + fNear) / (fFar - fNear));
-        //  projCube[i].x *= -fRight;
-        //  projCube[i].y *= -fTop;
-        //  projCube[i].x += fRight;
-        //  projCube[i].y += fTop;
-        //}
+        /* Project Cube Orthographically - Unit Cube Viewport
+        float fLeft = -ScreenWidth() * 0.5f;
+        float fRight = ScreenWidth() * 0.5f;
+        float fTop = ScreenHeight() * 0.5f;
+        float fBottom = -ScreenHeight() * 0.5f;
+        float fNear = 0.1f;
+        float fFar = 100.0f;
+        for (int i = 0; i < 8; i++)
+        {
+        	projCube[i].x = (2.0f / (fRight - fLeft)) * worldCube[i].x - ((fRight + fLeft) / (fRight - fLeft));
+        	projCube[i].y = (2.0f / (fTop - fBottom)) * worldCube[i].y - ((fTop + fBottom) / (fTop - fBottom));
+        	projCube[i].z = (2.0f / (fFar - fNear)) * worldCube[i].z - ((fFar + fNear) / (fFar - fNear));
+          projCube[i].x *= -fRight;
+          projCube[i].y *= -fTop;
+          projCube[i].x += fRight;
+          projCube[i].y += fTop;
+        }*/
 
         // Project Cube Orthographically - Full Screen Centered
         for (int i = 0; i < 8; i++)
@@ -242,15 +244,25 @@ public:
         bVisible[Face::Top] = CheckNormal(7, 3, 2);
     }
 
-    void GetFaceQuads(const olc::vi2d& vCell, const float fAngle, const float fPitch, const float fScale, const vec3d& vCamera, std::vector<sQuad> &render)
+    void GetFaceQuads(const olc::vi2d& vCellFloorVertex1, const float fAngle, const float fPitch, const float fScale, const vec3d& vCamera, std::vector<sQuad> &quads)
     {
-        std::array<vec3d, 8> projCube = CreateCube(vCell, fAngle, fPitch, fScale, vCamera);
+        std::array<vec3d, 8> projCube = CreateCube(vCellFloorVertex1, fAngle, fPitch, fScale, vCamera);
 
-        auto& cell = world.GetCell(vCell);
+        auto& cell = world.GetCell(vCellFloorVertex1);
 
         auto MakeFace = [&](int v1, int v2, int v3, int v4, Face f)
         {
-            render.push_back({ projCube[v1], projCube[v2], projCube[v3], projCube[v4], cell.id[f] });
+            // Test is mouse pointer is in this face
+            auto x = GetMouseX();
+            auto y = GetMouseY();
+            auto pv1  = (projCube[v2].y - projCube[v1].y) * (x - projCube[v1].x) + (projCube[v1].x - projCube[v2].x) * (y - projCube[v1].y);
+            auto pv2  = (projCube[v3].y - projCube[v2].y) * (x - projCube[v2].x) + (projCube[v2].x - projCube[v3].x) * (y - projCube[v2].y);
+            auto pv3  = (projCube[v4].y - projCube[v3].y) * (x - projCube[v3].x) + (projCube[v3].x - projCube[v4].x) * (y - projCube[v3].y);
+            auto pv4  = (projCube[v1].y - projCube[v4].y) * (x - projCube[v4].x) + (projCube[v4].x - projCube[v1].x) * (y - projCube[v4].y);
+            sQuad q = {projCube[v1], projCube[v2], projCube[v3], projCube[v4], cell.id[f] };
+            if (pv1 < 0 && pv2 < 0 && pv3 < 0 && pv4 < 0)
+                inside = q;
+            quads.push_back(q);
         };
 
         if (!cell.wall)
@@ -396,8 +408,13 @@ public:
 
         // 7) Draw some debug info
         DrawStringDecal({ 0,0 }, "Cursor: " + std::to_string(vCursor.x) + ", " + std::to_string(vCursor.y), olc::YELLOW, { 0.5f, 0.5f });
-        DrawStringDecal({ 0,6 }, "Angle: " + std::to_string(fCameraAngle) + ", " + std::to_string(fCameraPitch), olc::YELLOW, { 0.5f, 0.5f });
-        DrawStringDecal({ 0,12 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,6 }, "Angle: " + std::to_string(fCameraAngle), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,12 }, "Pitch: " + std::to_string(fCameraPitch), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,18 }, "Zoom: " + std::to_string(fCameraZoom), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,24 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
+
+        // Draw quad containing mouse pointer
+        DrawWarpedDecal(rendSelect.decal, { {inside.points[0].x, inside.points[0].y}, {inside.points[1].x, inside.points[1].y}, {inside.points[2].x, inside.points[2].y}, {inside.points[3].x, inside.points[3].y} });
 
         // Graceful exit if user is in full screen mode
         return !GetKey(olc::Key::ESCAPE).bPressed;
