@@ -386,7 +386,7 @@ public:
                     );
 
         // 5) Draw current tile selection
-        DrawPartialDecal({ 10,10 }, rendAllWalls.decal, vTileCursor * vTileSize, vTileSize);
+        DrawPartialDecal({ (float)(ScreenWidth() - vTileSize.x - 10), 10 }, rendAllWalls.decal, vTileCursor * vTileSize, vTileSize);
 
         // 6) Draw selection "tile cube"
         vQuads.clear();
