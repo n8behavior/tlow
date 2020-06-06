@@ -333,6 +333,11 @@ public:
             if (GetKey(olc::Key::RIGHT).bPressed) vCursor.x--;
             if (GetKey(olc::Key::UP).bPressed) vCursor.y++;
             if (GetKey(olc::Key::DOWN).bPressed) vCursor.y--;
+
+            // Right mouse-click to jump cursor to location
+            if (GetMouse(1).bPressed) vCursor = vMouse / vTileSize.x;
+
+            // Keep cursor in bounds
             if (vCursor.x < 0) vCursor.x = 0;
             if (vCursor.y < 0) vCursor.y = 0;
             if (vCursor.x >= world.size.x) vCursor.x = world.size.x - 1;
@@ -391,7 +396,8 @@ public:
 
         // 7) Draw some debug info
         DrawStringDecal({ 0,0 }, "Cursor: " + std::to_string(vCursor.x) + ", " + std::to_string(vCursor.y), olc::YELLOW, { 0.5f, 0.5f });
-        DrawStringDecal({ 0,8 }, "Angle: " + std::to_string(fCameraAngle) + ", " + std::to_string(fCameraPitch), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,6 }, "Angle: " + std::to_string(fCameraAngle) + ", " + std::to_string(fCameraPitch), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,12 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
 
         // Graceful exit if user is in full screen mode
         return !GetKey(olc::Key::ESCAPE).bPressed;
