@@ -102,14 +102,14 @@ public:
     Renderable rendAllWalls;
 
     olc::vf2d vCameraPos = { 0.0f, 0.0f };
-    float fCameraAngle = 0.0f;
+    float fCameraAngle = 3.6f;
     float fCameraAngleTarget = fCameraAngle;
-    float fCameraPitch = 5.5f;
+    float fCameraPitch = 5.8f;
     float fCameraZoom = 16.0f;
 
     bool bVisible[6];
 
-    olc::vi2d vCursor = { 0, 0 };
+    olc::vi2d vCursor = { 16, 16 };
     olc::vi2d vTileCursor = { 0,0 };
     olc::vi2d vTileSize = { 32, 32 };
 
@@ -136,7 +136,7 @@ public:
             boost::archive::text_iarchive ia(ifs);
             ia >> world;
         } else {
-            world.Create(64, 64);
+            world.Create(32, 32);
 
             for (int y = 0; y < world.size.y; y++)
                 for (int x = 0; x < world.size.x; x++) {
@@ -329,10 +329,10 @@ public:
             fCameraAngle += (fCameraAngleTarget - fCameraAngle) * 10.0f * fElapsedTime;
 
             // Arrow keys to move the selection cursor around map (boundary checked)
-            if (GetKey(olc::Key::LEFT).bPressed) vCursor.x--;
-            if (GetKey(olc::Key::RIGHT).bPressed) vCursor.x++;
-            if (GetKey(olc::Key::UP).bPressed) vCursor.y--;
-            if (GetKey(olc::Key::DOWN).bPressed) vCursor.y++;
+            if (GetKey(olc::Key::LEFT).bPressed) vCursor.x++;
+            if (GetKey(olc::Key::RIGHT).bPressed) vCursor.x--;
+            if (GetKey(olc::Key::UP).bPressed) vCursor.y++;
+            if (GetKey(olc::Key::DOWN).bPressed) vCursor.y--;
             if (vCursor.x < 0) vCursor.x = 0;
             if (vCursor.y < 0) vCursor.y = 0;
             if (vCursor.x >= world.size.x) vCursor.x = world.size.x - 1;
@@ -345,7 +345,7 @@ public:
         }
 
         // Position camera in world
-        vCameraPos = { vCursor.x + 0.5f, vCursor.y + 0.5f };
+        vCameraPos = { (float)vCursor.x, (float)vCursor.y };
         vCameraPos *= fCameraZoom;
 
         // Rendering
