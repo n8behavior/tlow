@@ -18,6 +18,15 @@ enum Face
     Top = 5
 };
 
+std::array<std::string,6> face_names
+        {"Floor",
+         "North",
+         "East",
+         "South",
+         "West",
+         "Top"
+        };
+
 // Override base class with your custom functionality
 class Game : public olc::PixelGameEngine {
 public:
@@ -443,7 +452,7 @@ public:
         DrawStringDecal({ 0,18 }, "Zoom: " + std::to_string(fCameraZoom), olc::YELLOW, { 0.5f, 0.5f });
         DrawStringDecal({ 0,24 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
         DrawStringDecal({ 0,30 }, "Mouse Cell: " + std::to_string(mouse_cell.x) + ", " + std::to_string(mouse_cell.y), olc::YELLOW, { 0.5f, 0.5f });
-        DrawStringDecal({ 0,36 }, "Mouse Quad: " + std::to_string(mouse_face), olc::YELLOW, {0.5f, 0.5f });
+        DrawStringDecal({ 0,36 }, "Mouse Face: " + face_names[mouse_face], olc::YELLOW, {0.5f, 0.5f });
 
         // Graceful exit if user is in full screen mode
         return !GetKey(olc::Key::ESCAPE).bPressed;
