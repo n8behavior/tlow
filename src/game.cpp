@@ -321,6 +321,8 @@ public:
             // QZ Keys to zoom in or out
             if (GetKey(olc::Key::Q).bHeld) fCameraZoom += 5.0f * fElapsedTime;
             if (GetKey(olc::Key::Z).bHeld) fCameraZoom -= 5.0f * fElapsedTime;
+            // Zoom proportional to mouse wheel delta
+            fCameraZoom *= 1 - GetMouseWheel() * 0.001f;
 
             // Numpad keys used to rotate camera to fixed angles
             if (GetKey(olc::Key::NP2).bPressed) fCameraAngleTarget = 3.14159f * 0.0f;
