@@ -45,6 +45,7 @@ public:
     {
         vec3d points[4];
         olc::vf2d tile;
+        olc::vf2d cell;
     };
 
     struct sCell
@@ -109,6 +110,7 @@ public:
 
     bool bVisible[6]; // if any part of the quad is visible
 
+    olc::vi2d mouse_cell {0, 0};
     olc::vi2d vCursor = { 16, 16 };
     olc::vi2d vTileCursor = { 0,0 };
     olc::vi2d vTileSize = { 32, 32 };
@@ -259,8 +261,10 @@ public:
             auto pv3  = (projCube[v4].y - projCube[v3].y) * (x - projCube[v3].x) + (projCube[v3].x - projCube[v4].x) * (y - projCube[v3].y);
             auto pv4  = (projCube[v1].y - projCube[v4].y) * (x - projCube[v4].x) + (projCube[v4].x - projCube[v1].x) * (y - projCube[v4].y);
             sQuad q = {projCube[v1], projCube[v2], projCube[v3], projCube[v4], cell.id[f] };
-            if (pv1 < 0 && pv2 < 0 && pv3 < 0 && pv4 < 0)
+            if (pv1 < 0 && pv2 < 0 && pv3 < 0 && pv4 < 0) {
+                q.cell = vCellFloorVertex1;
                 mouse_quads.push_back(q);
+            }
             quads.push_back(q);
         };
 
@@ -346,7 +350,10 @@ public:
             if (GetKey(olc::Key::DOWN).bPressed) vCursor.y--;
 
             // Right mouse-click to jump cursor to location
-            if (GetMouse(1).bPressed) vCursor = vMouse / vTileSize.x;
+            if (GetMouse(1).bPressed) vCursor = mouse_cell;
+
+            // Right mouse-click to paint cube face
+            if (GetMouse(0).bPressed)
 
             // Keep cursor in bounds
             if (vCursor.x < 0) vCursor.x = 0;
@@ -386,14 +393,6 @@ public:
             return z1 < z2;
         });
 
-        // 3) Sort in order of depth, from farthest away to closest
-        std::sort(/*std::execution::par_unseq, */mouse_quads.begin(), mouse_quads.end(), [](const sQuad& q1, const sQuad& q2)
-        {
-            float z1 = (q1.points[0].z + q1.points[1].z + q1.points[2].z + q1.points[3].z) * 0.25f;
-            float z2 = (q2.points[0].z + q2.points[1].z + q2.points[2].z + q2.points[3].z) * 0.25f;
-            return z1 > z2;
-        });
-
         // 4) Iterate through all "tile cubes" and draw their visible faces
         Clear(olc::BLACK);
         for (auto& q : vQuads)
@@ -421,13 +420,22 @@ public:
         DrawStringDecal({ 0,18 }, "Zoom: " + std::to_string(fCameraZoom), olc::YELLOW, { 0.5f, 0.5f });
         DrawStringDecal({ 0,24 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
 
-        // Draw quad containing mouse pointer
-        if(!mouse_quads.empty())
-            DrawWarpedDecal(rendSelect.decal, {{mouse_quads.front().points[0].x, mouse_quads.front().points[0].y},
-                                           {mouse_quads.front().points[1].x, mouse_quads.front().points[1].y},
-                                           {mouse_quads.front().points[2].x, mouse_quads.front().points[2].y},
-                                           {mouse_quads.front().points[3].x, mouse_quads.front().points[3].y} });
+        // 3) Sort in order of depth, from farthest away to closest
+        std::sort(/*std::execution::par_unseq, */mouse_quads.begin(), mouse_quads.end(), [](const sQuad& q1, const sQuad& q2)
+        {
+            float z1 = (q1.points[0].z + q1.points[1].z + q1.points[2].z + q1.points[3].z) * 0.25f;
+            float z2 = (q2.points[0].z + q2.points[1].z + q2.points[2].z + q2.points[3].z) * 0.25f;
+            return z1 > z2;
+        });
 
+        // Draw quad containing mouse pointer
+        if(!mouse_quads.empty()) {
+            mouse_cell = mouse_quads.front().cell;
+            DrawWarpedDecal(rendSelect.decal, {{mouse_quads.front().points[0].x, mouse_quads.front().points[0].y},
+                                               {mouse_quads.front().points[1].x, mouse_quads.front().points[1].y},
+                                               {mouse_quads.front().points[2].x, mouse_quads.front().points[2].y},
+                                               {mouse_quads.front().points[3].x, mouse_quads.front().points[3].y}});
+        }
         // Graceful exit if user is in full screen mode
         return !GetKey(olc::Key::ESCAPE).bPressed;
     }
