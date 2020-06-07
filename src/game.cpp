@@ -8,6 +8,16 @@
 
 //#include <execution>
 
+enum Face
+{
+    Floor = 0,
+    North = 1,
+    East = 2,
+    South = 3,
+    West = 4,
+    Top = 5
+};
+
 // Override base class with your custom functionality
 class Game : public olc::PixelGameEngine {
 public:
@@ -46,6 +56,7 @@ public:
         vec3d points[4];
         olc::vf2d tile;
         olc::vf2d cell;
+        Face face;
     };
 
     struct sCell
@@ -110,20 +121,11 @@ public:
 
     bool bVisible[6]; // if any part of the quad is visible
 
+    Face mouse_face {Face::Floor};
     olc::vi2d mouse_cell {0, 0};
     olc::vi2d vCursor = { 16, 16 };
     olc::vi2d vTileCursor = { 0,0 };
     olc::vi2d vTileSize = { 32, 32 };
-
-    enum Face
-    {
-        Floor = 0,
-        North = 1,
-        East = 2,
-        South = 3,
-        West = 4,
-        Top = 5
-    };
 
 public:
     bool OnUserCreate() override
@@ -263,6 +265,7 @@ public:
             sQuad q = {projCube[v1], projCube[v2], projCube[v3], projCube[v4], cell.id[f] };
             if (pv1 < 0 && pv2 < 0 && pv3 < 0 && pv4 < 0) {
                 q.cell = vCellFloorVertex1;
+                q.face = f;
                 mouse_quads.push_back(q);
             }
             quads.push_back(q);
@@ -354,8 +357,8 @@ public:
             // Right mouse-click to jump cursor to location
             if (GetMouse(1).bPressed) vCursor = mouse_cell;
 
-            // Right mouse-click to paint cube face
-            if (GetMouse(0).bPressed)
+            // Left mouse-click to paint mouse face with current tile
+            if (GetMouse(0).bPressed) world.GetCell(mouse_cell).id[mouse_face] = vTileCursor * vTileSize;
 
             // Keep cursor in bounds
             if (vCursor.x < 0) vCursor.x = 0;
@@ -415,14 +418,7 @@ public:
         for (auto& q : vQuads)
             DrawWarpedDecal(rendSelect.decal, { {q.points[0].x, q.points[0].y}, {q.points[1].x, q.points[1].y}, {q.points[2].x, q.points[2].y}, {q.points[3].x, q.points[3].y} });
 
-        // 7) Draw some debug info
-        DrawStringDecal({ 0,0 }, "Cursor: " + std::to_string(vCursor.x) + ", " + std::to_string(vCursor.y), olc::YELLOW, { 0.5f, 0.5f });
-        DrawStringDecal({ 0,6 }, "Angle: " + std::to_string(fCameraAngle), olc::YELLOW, { 0.5f, 0.5f });
-        DrawStringDecal({ 0,12 }, "Pitch: " + std::to_string(fCameraPitch), olc::YELLOW, { 0.5f, 0.5f });
-        DrawStringDecal({ 0,18 }, "Zoom: " + std::to_string(fCameraZoom), olc::YELLOW, { 0.5f, 0.5f });
-        DrawStringDecal({ 0,24 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
-
-        // 3) Sort in order of depth, from farthest away to closest
+        // Sort by depth to closest quad
         std::sort(/*std::execution::par_unseq, */mouse_quads.begin(), mouse_quads.end(), [](const sQuad& q1, const sQuad& q2)
         {
             float z1 = (q1.points[0].z + q1.points[1].z + q1.points[2].z + q1.points[3].z) * 0.25f;
@@ -433,11 +429,22 @@ public:
         // Draw quad containing mouse pointer
         if(!mouse_quads.empty()) {
             mouse_cell = mouse_quads.front().cell;
+            mouse_face = mouse_quads.front().face;
             DrawWarpedDecal(rendSelect.decal, {{mouse_quads.front().points[0].x, mouse_quads.front().points[0].y},
                                                {mouse_quads.front().points[1].x, mouse_quads.front().points[1].y},
                                                {mouse_quads.front().points[2].x, mouse_quads.front().points[2].y},
                                                {mouse_quads.front().points[3].x, mouse_quads.front().points[3].y}});
         }
+
+        // 7) Draw some debug info
+        DrawStringDecal({ 0,0 }, "Cursor: " + std::to_string(vCursor.x) + ", " + std::to_string(vCursor.y), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,6 }, "Angle: " + std::to_string(fCameraAngle), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,12 }, "Pitch: " + std::to_string(fCameraPitch), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,18 }, "Zoom: " + std::to_string(fCameraZoom), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,24 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,30 }, "Mouse Cell: " + std::to_string(mouse_cell.x) + ", " + std::to_string(mouse_cell.y), olc::YELLOW, { 0.5f, 0.5f });
+        DrawStringDecal({ 0,36 }, "Mouse Quad: " + std::to_string(mouse_face), olc::YELLOW, {0.5f, 0.5f });
+
         // Graceful exit if user is in full screen mode
         return !GetKey(olc::Key::ESCAPE).bPressed;
     }
