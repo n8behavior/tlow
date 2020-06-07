@@ -107,8 +107,7 @@ public:
     float fCameraPitch = 5.8f;
     float fCameraZoom = 16.0f;
 
-    bool bVisible[6];
-    sQuad inside;
+    bool bVisible[6]; // if any part of the quad is visible
 
     olc::vi2d vCursor = { 16, 16 };
     olc::vi2d vTileCursor = { 0,0 };
@@ -244,7 +243,7 @@ public:
         bVisible[Face::Top] = CheckNormal(7, 3, 2);
     }
 
-    void GetFaceQuads(const olc::vi2d& vCellFloorVertex1, const float fAngle, const float fPitch, const float fScale, const vec3d& vCamera, std::vector<sQuad> &quads)
+    void GetFaceQuads(const olc::vi2d& vCellFloorVertex1, const float fAngle, const float fPitch, const float fScale, const vec3d& vCamera, std::vector<sQuad> &quads, std::vector<sQuad> &mouse_quads)
     {
         std::array<vec3d, 8> projCube = CreateCube(vCellFloorVertex1, fAngle, fPitch, fScale, vCamera);
 
@@ -261,7 +260,7 @@ public:
             auto pv4  = (projCube[v1].y - projCube[v4].y) * (x - projCube[v4].x) + (projCube[v4].x - projCube[v1].x) * (y - projCube[v4].y);
             sQuad q = {projCube[v1], projCube[v2], projCube[v3], projCube[v4], cell.id[f] };
             if (pv1 < 0 && pv2 < 0 && pv3 < 0 && pv4 < 0)
-                inside = q;
+                mouse_quads.push_back(q);
             quads.push_back(q);
         };
 
@@ -374,9 +373,10 @@ public:
 
         // 2) Get all visible sides of all visible "tile cubes"
         std::vector<sQuad> vQuads;
+        std::vector<sQuad> mouse_quads; // cube face containing mouse pointer
         for(int y = 0; y<world.size.y; y++)
             for(int x=0; x<world.size.x; x++)
-                GetFaceQuads({ x, y }, fCameraAngle, fCameraPitch, fCameraZoom, { vCameraPos.x, 0.0f, vCameraPos.y }, vQuads);
+                GetFaceQuads({ x, y }, fCameraAngle, fCameraPitch, fCameraZoom, { vCameraPos.x, 0.0f, vCameraPos.y }, vQuads, mouse_quads);
 
         // 3) Sort in order of depth, from farthest away to closest
         std::sort(/*std::execution::par_unseq, */vQuads.begin(), vQuads.end(), [](const sQuad& q1, const sQuad& q2)
@@ -384,6 +384,14 @@ public:
             float z1 = (q1.points[0].z + q1.points[1].z + q1.points[2].z + q1.points[3].z) * 0.25f;
             float z2 = (q2.points[0].z + q2.points[1].z + q2.points[2].z + q2.points[3].z) * 0.25f;
             return z1 < z2;
+        });
+
+        // 3) Sort in order of depth, from farthest away to closest
+        std::sort(/*std::execution::par_unseq, */mouse_quads.begin(), mouse_quads.end(), [](const sQuad& q1, const sQuad& q2)
+        {
+            float z1 = (q1.points[0].z + q1.points[1].z + q1.points[2].z + q1.points[3].z) * 0.25f;
+            float z2 = (q2.points[0].z + q2.points[1].z + q2.points[2].z + q2.points[3].z) * 0.25f;
+            return z1 > z2;
         });
 
         // 4) Iterate through all "tile cubes" and draw their visible faces
@@ -402,7 +410,7 @@ public:
 
         // 6) Draw selection "tile cube"
         vQuads.clear();
-        GetFaceQuads(vCursor, fCameraAngle, fCameraPitch, fCameraZoom, { vCameraPos.x, 0.0f, vCameraPos.y }, vQuads);
+        GetFaceQuads(vCursor, fCameraAngle, fCameraPitch, fCameraZoom, { vCameraPos.x, 0.0f, vCameraPos.y }, vQuads, mouse_quads);
         for (auto& q : vQuads)
             DrawWarpedDecal(rendSelect.decal, { {q.points[0].x, q.points[0].y}, {q.points[1].x, q.points[1].y}, {q.points[2].x, q.points[2].y}, {q.points[3].x, q.points[3].y} });
 
@@ -414,7 +422,11 @@ public:
         DrawStringDecal({ 0,24 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
 
         // Draw quad containing mouse pointer
-        DrawWarpedDecal(rendSelect.decal, { {inside.points[0].x, inside.points[0].y}, {inside.points[1].x, inside.points[1].y}, {inside.points[2].x, inside.points[2].y}, {inside.points[3].x, inside.points[3].y} });
+        if(!mouse_quads.empty())
+            DrawWarpedDecal(rendSelect.decal, {{mouse_quads.front().points[0].x, mouse_quads.front().points[0].y},
+                                           {mouse_quads.front().points[1].x, mouse_quads.front().points[1].y},
+                                           {mouse_quads.front().points[2].x, mouse_quads.front().points[2].y},
+                                           {mouse_quads.front().points[3].x, mouse_quads.front().points[3].y} });
 
         // Graceful exit if user is in full screen mode
         return !GetKey(olc::Key::ESCAPE).bPressed;
