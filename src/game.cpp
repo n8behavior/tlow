@@ -149,7 +149,8 @@ public:
             boost::archive::text_iarchive ia(ifs);
             ia >> world;
         } else {
-            world.Create(32, 32);
+            // Default 32x32 world
+            world.Create(64, 64);
 
             for (int y = 0; y < world.size.y; y++)
                 for (int x = 0; x < world.size.x; x++) {
@@ -367,7 +368,7 @@ public:
             if (GetMouse(1).bPressed) vCursor = mouse_cell;
 
             // Left mouse-click to paint mouse face with current tile
-            if (GetMouse(0).bPressed) world.GetCell(mouse_cell).id[mouse_face] = vTileCursor * vTileSize;
+            if (GetMouse(0).bHeld) world.GetCell(mouse_cell).id[mouse_face] = vTileCursor * vTileSize;
 
             // Keep cursor in bounds
             if (vCursor.x < 0) vCursor.x = 0;
