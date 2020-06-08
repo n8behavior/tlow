@@ -2,6 +2,7 @@ project(tlow_prog)
 
 file(COPY sprites.png DESTINATION ".")
 file(COPY cursor.png DESTINATION ".")
+file(COPY menu.png DESTINATION ".")
 
 find_package(Boost REQUIRED COMPONENTS serialization)
 

@@ -1,37 +1,19 @@
 #define OLC_PGE_APPLICATION
+#define OLC_PGEX_POPUPMENU
+
 #include "olcPixelGameEngine.hpp"
+#include "olcPGEX_PopUpMenu.hpp"
+
 #include <fstream>
 #include <filesystem>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/vector.hpp>
-
 //#include <execution>
 
-enum Face
-{
-    Floor = 0,
-    North = 1,
-    East = 2,
-    South = 3,
-    West = 4,
-    Top = 5
-};
-
-std::array<std::string,6> face_names
-        {"Floor",
-         "North",
-         "East",
-         "South",
-         "West",
-         "Top"
-        };
-
-// Override base class with your custom functionality
 class Game : public olc::PixelGameEngine {
 public:
     Game() {
-        // Name you application
         sAppName = "The Lie of Winterhaven";
     }
 
@@ -59,6 +41,18 @@ public:
     {
         float x, y, z;
     };
+
+    enum Face
+    {
+        Floor = 0,
+        North = 1,
+        East = 2,
+        South = 3,
+        West = 4,
+        Top = 5
+    };
+
+    std::array<std::string,6> face_names {"Floor", "North", "East", "South", "West", "Top" };
 
     struct sQuad
     {
@@ -116,11 +110,14 @@ public:
 
     };
 
+
     World world;
     bool saving = false;
     std::string map_name { "test.map" };
+
     Renderable rendSelect;
     Renderable rendAllWalls;
+    Renderable menu_sprites;
 
     olc::vf2d vCameraPos = { 0.0f, 0.0f };
     float fCameraAngle = 3.6f;
@@ -136,11 +133,31 @@ public:
     olc::vi2d vTileCursor = { 0,0 };
     olc::vi2d vTileSize = { 32, 32 };
 
+    olc::popup::Menu m;
+    olc::popup::Manager man;
+    uint8_t menu_layer;
+    std::string sLastAction;
+    bool menu_showing{false};
+
+    uint8_t editor_layer;
+
 public:
     bool OnUserCreate() override
     {
+        //SetDrawTarget((uint8_t)0);
+        Clear(olc::BLANK);
+
+        menu_layer = CreateLayer();
+        EnableLayer(menu_layer, true);
+        SetDrawTarget(menu_layer);
+        Clear(olc::BLANK);
+
+        editor_layer = CreateLayer();
+        EnableLayer(editor_layer, true);
+
         rendSelect.Load("./cursor.png");
         rendAllWalls.Load("./sprites.png");
+        menu_sprites.Load("./menu.png");
 
         if (std::filesystem::exists(map_name)) {
 
@@ -163,6 +180,37 @@ public:
                     world.GetCell({x, y}).id[Face::East] = olc::vi2d{6, 1} * vTileSize;
                 }
         }
+        // Construction (root menu is a 1x5 table)
+        m.SetTable(1, 5);
+
+        // Add first item  to root menu (A 1x5 submenu)
+        m["Menu1"].SetTable(1, 5);
+
+        // Add items to first item
+        m["Menu1"]["Item1"];
+        m["Menu1"]["Item2"];
+
+        // Add a 4x3 submenu
+        m["Menu1"]["Item3"].SetTable(4, 3);
+        m["Menu1"]["Item3"]["Option1"];
+        m["Menu1"]["Item3"]["Option2"];
+
+        // Set properties of specific item
+        m["Menu1"]["Item3"]["Option3"].Enable(false);
+        m["Menu1"]["Item3"]["Option4"];
+        m["Menu1"]["Item3"]["Option5"];
+        m["Menu1"]["Item4"];
+
+        // Add second item to root menu
+        m["Menu2"].SetTable(3, 3);
+        m["Menu2"]["Item1"];
+        m["Menu2"]["Item2"].SetID(1001).Enable(true);
+        m["Menu2"]["Item3"];
+
+        // Construct the menu structure
+        m.Build();
+
+
         return true;
     }
 
@@ -298,12 +346,16 @@ public:
 
     bool OnUserUpdate(float fElapsedTime) override
     {
+        SetDrawTarget(editor_layer);
+        Clear(olc::VERY_DARK_BLUE);
+
         // Grab mouse for convenience
         olc::vi2d vMouse = { GetMouseX(), GetMouseY() };
 
-        // Save the map
+        // CTRL modifier is being used
         if (GetKey(olc::Key::CTRL).bHeld)
         {
+            // Save the map
             if( GetKey(olc::Key::S).bPressed && !saving)
             {
                 saving = true;
@@ -314,7 +366,38 @@ public:
                 std::cout << "Saved " << map_name << std::endl;
                 saving = false;
             }
-        } else {
+        } else if (menu_showing) {
+            // Send key events to menu
+            if (GetKey(olc::Key::UP).bPressed) man.OnUp();
+            if (GetKey(olc::Key::DOWN).bPressed) man.OnDown();
+            if (GetKey(olc::Key::LEFT).bPressed) man.OnLeft();
+            if (GetKey(olc::Key::RIGHT).bPressed) man.OnRight();
+            if (GetKey(olc::Key::ESCAPE).bPressed) man.OnBack();
+
+            // "Confirm/Action" Key does something, if it returns non-null
+            // then a menu item has been selected. The specific item will
+            // be returned
+            olc::popup::Menu* command = nullptr;
+            if (GetKey(olc::Key::SPACE).bPressed) command = man.OnConfirm();
+            if (command != nullptr)
+            {
+                sLastAction =
+                        "Selected: " + command->GetName() +
+                        " ID: " + std::to_string(command->GetID());
+
+                // Optionally close menu?
+                man.Close();
+                menu_showing = false;
+            }
+        } else { // no modifier in use
+            if (GetKey(olc::Key::M).bPressed) {
+                man.Open(&m);
+                menu_showing = true;
+                std::cout << "Menu"  << std::endl;
+
+            }
+
+
             // Edit mode - Selection from tile sprite sheet
             if (GetKey(olc::Key::TAB).bHeld) {
                 DrawSprite({0, 0}, rendAllWalls.sprite);
@@ -409,7 +492,6 @@ public:
         });
 
         // 4) Iterate through all "tile cubes" and draw their visible faces
-        Clear(olc::BLACK);
         for (auto& q : vQuads)
             DrawPartialWarpedDecal
                     (
@@ -446,6 +528,11 @@ public:
                                                {mouse_quads.front().points[3].x, mouse_quads.front().points[3].y}});
         }
 
+        SetDrawTarget(menu_layer);
+        Clear(olc::BLANK);
+        man.Draw(menu_sprites.sprite, { ScreenWidth()/2,ScreenHeight()/2 });
+        SetDrawTarget(editor_layer);
+
         // 7) Draw some debug info
         DrawStringDecal({ 0,0 }, "Cursor: " + std::to_string(vCursor.x) + ", " + std::to_string(vCursor.y), olc::YELLOW, { 0.5f, 0.5f });
         DrawStringDecal({ 0,6 }, "Angle: " + std::to_string(fCameraAngle), olc::YELLOW, { 0.5f, 0.5f });
@@ -454,6 +541,8 @@ public:
         DrawStringDecal({ 0,24 }, "MouseXY: " + std::to_string(GetMouseX()) + ", " + std::to_string(GetMouseY()), olc::YELLOW, { 0.5f, 0.5f });
         DrawStringDecal({ 0,30 }, "Mouse Cell: " + std::to_string(mouse_cell.x) + ", " + std::to_string(mouse_cell.y), olc::YELLOW, { 0.5f, 0.5f });
         DrawStringDecal({ 0,36 }, "Mouse Face: " + face_names[mouse_face], olc::YELLOW, {0.5f, 0.5f });
+        DrawStringDecal({ 0,42 }, sLastAction, olc::YELLOW, { 0.5f, 0.5f });
+
 
         // Graceful exit if user is in full screen mode
         return !GetKey(olc::Key::ESCAPE).bPressed;
