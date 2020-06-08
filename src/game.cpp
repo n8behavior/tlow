@@ -138,6 +138,10 @@ public:
     uint8_t menu_layer;
     std::string sLastAction;
     bool menu_showing{false};
+    enum menu_commands {
+        save = 0,
+        save_as = 1
+    };
 
     uint8_t editor_layer;
 
@@ -182,7 +186,9 @@ public:
         }
         // Construction (root menu is a 1x5 table)
         m.SetTable(1, 5);
-
+        m["Save"].SetID(menu_commands::save);
+        m["Save As"].SetID(menu_commands::save_as);
+        // Menu DEMO code for reference
         // Add first item  to root menu (A 1x5 submenu)
         m["Menu1"].SetTable(1, 5);
 
@@ -344,6 +350,19 @@ public:
     }
 
 
+    void save_map() {
+        // TODO: this is a bad idea, needs proper synchronized access
+        //       and World (Game too??) needs locked while saving
+        if (saving) return;
+        saving = true;
+        std::cout << "Saving map to " << map_name << std::endl;
+        std::ofstream ofs(map_name);
+        boost::archive::text_oarchive oa(ofs);
+        oa << world;
+        std::cout << "Saved " << map_name << std::endl;
+        saving = false;
+    }
+
     bool OnUserUpdate(float fElapsedTime) override
     {
         SetDrawTarget(editor_layer);
@@ -358,13 +377,7 @@ public:
             // Save the map
             if( GetKey(olc::Key::S).bPressed && !saving)
             {
-                saving = true;
-                std::cout << "Saving map to " << map_name << std::endl;
-                std::ofstream ofs(map_name);
-                boost::archive::text_oarchive oa(ofs);
-                oa << world;
-                std::cout << "Saved " << map_name << std::endl;
-                saving = false;
+                save_map();
             }
         } else if (menu_showing) {
             // Send key events to menu
@@ -372,7 +385,10 @@ public:
             if (GetKey(olc::Key::DOWN).bPressed) man.OnDown();
             if (GetKey(olc::Key::LEFT).bPressed) man.OnLeft();
             if (GetKey(olc::Key::RIGHT).bPressed) man.OnRight();
-            if (GetKey(olc::Key::ESCAPE).bPressed) man.OnBack();
+            if (GetKey(olc::Key::Z).bPressed) {
+                man.Close();
+                menu_showing = false;
+            }
 
             // "Confirm/Action" Key does something, if it returns non-null
             // then a menu item has been selected. The specific item will
@@ -388,6 +404,11 @@ public:
                 // Optionally close menu?
                 man.Close();
                 menu_showing = false;
+                switch (command->GetID()) {
+                    case menu_commands::save:
+                        save_map();
+                        break;
+                }
             }
         } else { // no modifier in use
             if (GetKey(olc::Key::M).bPressed) {
