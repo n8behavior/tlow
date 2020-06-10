@@ -171,7 +171,7 @@ public:
             ia >> world;
         } else {
             // Default 32x32 world
-            world.Create(64, 64);
+            world.Create(16, 16);
 
             for (int y = 0; y < world.size.y; y++)
                 for (int x = 0; x < world.size.x; x++) {
@@ -417,6 +417,7 @@ public:
                 std::cout << "Menu"  << std::endl;
 
             }
+
 
 
             // Edit mode - Selection from tile sprite sheet
